@@ -1,0 +1,14 @@
+{
+    "cluster_name": "test",
+    "rabbitmq_host": "",
+    "rabbitmq_port": 5672,
+    "grpc_addr" : "",
+    "default_build_opt": 14,
+    "compiler": "v142",
+    "library": "x64",
+    "build_mode": "Release",
+    "optimization": "O1",
+    "random_pick": 0,
+    "clone_proxy": [""],
+    "clone_proxy_token":"syracuse"
+}

@@ -1,0 +1,10 @@
+{
+    "rabbitmq_host": "rabbitmq",
+    "rabbitmq_port": 5672,
+    "git_token": [
+    ],
+    "language": "c++",
+    "grpc_addr": "coordinator:50052",
+    "proxies": [
+    ]
+}

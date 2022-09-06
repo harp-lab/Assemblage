@@ -1,0 +1,4 @@
+{
+    "db_path" : "mysql+pymysql://root:root@lcs-vc-kkmicins.syr.edu:3306/assemblage?charset=utf8mb4"
+}
+
