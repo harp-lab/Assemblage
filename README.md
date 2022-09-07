@@ -1,18 +1,14 @@
-# repo-scraper-builder
+# Assemblage
 
-* Find C/C++ projects on GitHub
-* Clone repos local machine
-* Experiment with build systems and flags to get diversity of binaries
-* Maintain record of repo/binary metadata throughout
-
-Design document notes: https://docs.google.com/document/d/1p9SvTGqZT9zI8eYj6Z1dHr9NWoytWdvptI3m0Kixqo4/edit
-https://docs.google.com/document/d/1pjuG1iYjtir0W1pzO09rr49sehRp5bbLsamGmyPzJw4/edit
+Assemblage is a distributed binary corpus discovery, generation, and archival tool built to provide high-quality labeled metadata for the purposes of building training data for machine learning applications of binary analysis and other applications (static / dynamic analysis, reverse engineering, etc...).
 
 ## AWS
-Assemblage support aws deployment, please copy your `.aws` folder to `{ASSEMBLAGE_HOME}/aws` before system initialization.
 
-## Set up env for developing & testing
+We have run Assemblage over the course of several months within the research computing cluster at (a) Syracuse University and (b) on Amazon Web Services EC2. This branch primarily targets deployment on AWS.
 
+Assemblage supports deployment on AWS, please copy your `.aws` folder to `{ASSEMBLAGE_HOME}/aws` before system initialization.
+
+## Environment setup for testing and deployment
 
 1. Create the docker network
 ```
@@ -52,14 +48,16 @@ pip3 install -r requirements.txt
 python3 cli.py
 ```
 
-
 4. Run `docker-compose` to start up the services (Optional, cli.py can boot after initialization)
 ```
 docker-compose up -d
 ```
 
-5. Boot CLI
+5. Boot CLI (Configure system)
+
 ```
 pip3 install pyfiglet prompt_toolkit pyfiglet plotext pypager grpcio grpcio-tools
 python3 cli.py --server $(docker inspect --format '{{ $network := index .NetworkSettings.Networks "assemblage-net" }}{{ $network.IPAddress}}'  assemblage_coordinator_1):50052
 ```
+
+System administration is primarily supported via the CLI. A web interface to Assemblage is in progress.
