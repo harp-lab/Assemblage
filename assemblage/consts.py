@@ -2,6 +2,7 @@
 constant
 
 """
+import os
 
 class BuildStatus:
     """
@@ -16,7 +17,9 @@ class BuildStatus:
     TIMEOUT = 4
     BLACKLIST = 5
     OUTDATED_MSG = 6    # a message overtime, not build overtime
+    EXCLUDE = 7
     COMMAND_FAILED = 10
+
 
 PING_INTERVAL = 10
 SUPPORTED_BUILD = ["make", "cmake", "autoconf", "bootstrap", "sln"]
@@ -41,10 +44,14 @@ SCRAPE_CHECKPOINT = f"{BIN_DIR}/scrape-checkpoint"
 
 # Windows related constants
 LOG_FILE = "assemblage.log"
-BINPATH = "Binaries"
+BINPATH = "/Binaries"
+if os.name=="nt":
+    BINPATH = "Binaries"
+
 PDBPATH = "Pdbs"
 BUILDPATH = "Builds"
 PDBJSONNAME = "pdbinfo.json"
 WIN_PREFIX = "C:\\Assemblage\\repo-scraper-builder\\Binaries\\"
 
 AWS_AUTO_REBOOT_PREFIX = "auto-worker"
+REPO_SIZE_THRESHOLD = 50

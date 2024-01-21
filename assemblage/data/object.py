@@ -5,6 +5,7 @@ Yihao Sun
 '''
 
 import datetime
+import json
 
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, create_engine
@@ -34,6 +35,7 @@ class Status(Base):
     repo_id = Column(Integer, ForeignKey("projects._id", ondelete="CASCADE"))
     mod_timestamp = Column(Integer, default=-1)
     build_time = Column(Integer, default=-1)
+    commit_hexsha = Column(String(length=255), default='')
     binaries = relationship(
         'BuildDO', cascade="all, delete", passive_deletes=True)
 
@@ -46,7 +48,7 @@ class Status(Base):
 class BuildOpt(Base):
     """ build option for how to build a repo """
     __tablename__ = 'buildopt'
-    _id = Column(Integer, primary_key=True, autoincrement=True,)
+    _id = Column(Integer, primary_key=True)
     # git = Column(String(length=255), default='')
     platform = Column(String(length=255), default='')
     language = Column(String(length=255), default='')
@@ -126,7 +128,7 @@ def init_clean_database(db_str):
     try:
         engine = create_engine(db_str, connect_args={'connect_timeout': 10})
     except Exception as err:
-        print("Cant establish DB connection to %s", db_str)
+        print("Cant establish DB connection to", db_str, err)
         return
     try:
         sessionmaker(engine).close_all()
@@ -146,43 +148,10 @@ def init_clean_database(db_str):
         Base.metadata.create_all(engine)
     except Exception as err:
         print(err)
-    # create an default buildopt here
-    with Session(engine) as session:
-        default_buildopt1 = BuildOpt(
-            platform = "windows",
-            language = "c++",
-            compiler_name = "v143",
-            compiler_flag = "-Od",
-            build_system = "sln",
-            build_command = "Debug",
-            library = "x64",
-            enable = True)
-        default_buildopt2 = BuildOpt(
-            platform = "windows",
-            language = "c++",
-            compiler_name = "v142",
-            compiler_flag = "-Od",
-            build_system = "sln",
-            build_command = "Debug",
-            library = "x64",
-            enable = True)
-        default_buildopt3 = BuildOpt(
-            platform = "windows",
-            language = "c++",
-            compiler_name = "v141",
-            compiler_flag = "-Od",
-            build_system = "sln",
-            build_command = "Debug",
-            library = "x64",
-            enable = True)
-        default_buildopt4 = BuildOpt(
-            platform = "windows",
-            language = "c++",
-            compiler_name = "v140",
-            compiler_flag = "-Od",
-            build_system = "sln",
-            build_command = "Debug",
-            library = "x64",
-            enable = True)
-        session.add_all([default_buildopt1, default_buildopt2, default_buildopt3, default_buildopt4])
-        session.commit()
+    print("Finished")
+
+
+if __name__ == '__main__':
+    with open("assemblage/configure/coordinator_config.json") as f:
+        coordinator_config = json.load(f)
+    init_clean_database(coordinator_config["db_path"])

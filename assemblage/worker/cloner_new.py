@@ -74,7 +74,7 @@ class Builder(BasicWorker):
         self.route_key = f"worker.{self.opt_id}"
         self.mq_client = None
         if self.library == "x86" and self.platform == "windows":
-            self.library = "Win32"
+            self.library = "x86"
         self.random_pick = random_pick
         #  a repo keep track of the (URL, opt_id) built before
         self.built_b_status_list = []
@@ -103,7 +103,7 @@ class Builder(BasicWorker):
                 'durable': True
             }
         }, {
-            'name': 'post_analysis.ddisasm',
+            'name': 'post_analysis',
             'params': {
                 'durable': True
             }
@@ -165,10 +165,11 @@ class Builder(BasicWorker):
         Form a target directory with repo information
         """
         hashedurl = str(hash(repo['url'])).replace("-", "")
-        hashedurl = hashedurl + ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
+        hashedurl = hashedurl + \
+            ''.join(random.choice(string.ascii_lowercase) for _ in range(5))
         return f"{self.tmp_dir}/{hashedurl}"
 
-    def send_binaries(self, clone_dir, repo, original_files):
+    def scan_binaries(self, clone_dir, repo, original_files):
         """ Store the binaries in the specified output directory. """
         if self.platform == 'linux':
             bin_found = {
@@ -247,7 +248,7 @@ class Builder(BasicWorker):
                 'task_id': kwarg['task_id'],
                 'file_name': kwarg['file_name']
             }
-        elif kind == 'post_analysis.ddisasm':
+        elif kind.startswith('post_analysis'):
             ret = {
                 'file_name': kwarg['file_name']
             }
@@ -270,27 +271,30 @@ class Builder(BasicWorker):
         """ clone from proxy server """
         logging.info("Cloning %s with proxy", repo["url"])
         proxy_chosen = random.choice(self.clone_proxy_servers)
-        zip_url = f"http://{proxy_chosen}/" + hashlib.md5(repo["url"].encode()).hexdigest()+".zip"
-        logging.info("Cloning %s to %s", zip_url,clone_dir)
+        zip_url = f"http://{proxy_chosen}/" + \
+            hashlib.md5(repo["url"].encode()).hexdigest()+".zip"
+        logging.info("Cloning %s to %s", zip_url, clone_dir)
         try:
-            response = requests.get(f"http://{proxy_chosen}/proxy/clone", {"repo_url": repo["url"], "auth": self.clone_proxy_token}, timeout=60)
+            response = requests.get(f"http://{proxy_chosen}/proxy/clone", {
+                                    "repo_url": repo["url"], "auth": self.clone_proxy_token}, timeout=60)
         except Exception as err:
             logging.info(err)
             return (str(err)).encode(), BuildStatus.FAILED
         os.makedirs(clone_dir)
-        tmp_file_path = os.path.join(self.tmp_dir, hashlib.md5(repo["url"].encode()).hexdigest()+".zip")
-        logging.info("Proxy response: %s",response.text)
+        tmp_file_path = os.path.join(self.tmp_dir, hashlib.md5(
+            repo["url"].encode()).hexdigest()+".zip")
+        logging.info("Proxy response: %s", response.text)
         if int(response.text) == 0:
             response = requests.get(zip_url)
             open(tmp_file_path, "wb").write(response.content)
             shutil.unpack_archive(tmp_file_path, clone_dir)
             os.remove(tmp_file_path)
             logging.info("Sending delete request")
-            response = requests.get(f"http://{proxy_chosen}/proxy/delete", {"zip_url": hashlib.md5(repo["url"].encode()).hexdigest()+".zip" }, timeout=10)
+            response = requests.get(f"http://{proxy_chosen}/proxy/delete", {
+                                    "zip_url": hashlib.md5(repo["url"].encode()).hexdigest()+".zip"}, timeout=10)
             return b'CLONE SUCCESS', BuildStatus.SUCCESS
         else:
             return bytes(response.text, "utf-8"), BuildStatus.FAILED
-        
 
     def job_handler(self, ch, method, _props, body):
         """
@@ -352,7 +356,7 @@ class Builder(BasicWorker):
             build_task_configs = []
             random_compiler_flags = ["O1", "O2", "Ox", "Od"]
             random_modes = ["Debug", "Release"]
-            random_plat = ["Win32", "x64"]
+            random_plat = ["x86", "x64"]
             rand_compiler_versions = ["v142", "v141", "v140"]
             build_task_configs.append(
                 (self.library, self.build_mode,
@@ -398,7 +402,7 @@ class Builder(BasicWorker):
                     platform=self.platform)
                 after_build_time = int(time.time())
                 if build_status == BuildStatus.SUCCESS:
-                    dest_binfolder = self.send_binaries(
+                    dest_binfolder = self.scan_binaries(
                         clone_dir, repo, original_files=original_files)
                 self.send_msg(repo=repo,
                               kind='build',
@@ -407,7 +411,7 @@ class Builder(BasicWorker):
                               msg=build_msg,
                               build_time=(after_build_time - before_build_time))
                 self.built_b_status_list.append((url, self.opt_id))
-                logging.info("Build exit %s", build_msg.replace("\n"," "))
+                logging.info("Build exit %s", build_msg.replace("\n", " "))
                 if self.platform == "windows" and build_status == BuildStatus.SUCCESS:
                     build_method.post_processing_pdb(dest_binfolder,
                                                      build_mode, platform,
@@ -418,10 +422,10 @@ class Builder(BasicWorker):
                     repo_fname = dest_binfolder.split("\\")[-1]
                     build_method.post_processing_ftp(
                         self.server_addr, f"{BINPATH}/{repo_fname}/"+zip_file, repo, zip_file)
-                    self.send_msg("post_analysis.ddisasm", repo,
+                    self.send_msg("post_analysis", repo,
                                   file_name=f"/binaries/ftp/{zip_file}")
                     folders.append(dest_binfolder)
-                build_count+=1
+                build_count += 1
         else:
             logging.info("Clone FAILURE %s: %s", url, clone_msg)
             if not self.clone_proxy_servers:

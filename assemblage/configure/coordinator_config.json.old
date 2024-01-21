@@ -1,1 +1,0 @@
-{"rabbitmq_host": "rabbitmq", "rabbitmq_port": 5672, "grpc_addr": "[::]:50052", "db_path": ""}

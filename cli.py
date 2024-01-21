@@ -15,7 +15,7 @@ import subprocess
 from time import sleep, time
 import traceback
 import time
-
+import requests
 import grpc
 from prompt_toolkit import PromptSession, prompt
 from prompt_toolkit.patch_stdout import patch_stdout
@@ -31,11 +31,12 @@ from pypager.source import GeneratorSource
 from pypager.pager import Pager
 from assemblage.consts import BuildStatus
 from assemblage.data.db import DBManager
-from assemblage.coordinator.convert import pack_repo_msg
 from assemblage.protobufs.assemblage_pb2 import DumpRequest, RepoRequest, WorkerRequest, BuildRequest, \
     ProgressRequest, Repo, BuildOpt, enableBuildOptRequest, getBuildOptRequest, SetOptRequest
 from assemblage.protobufs.assemblage_pb2_grpc import AssemblageServiceStub
 from assemblage.data.object import init_clean_database
+from assemblage.worker.build_method import cmd_with_output
+
 
 logging.basicConfig(level=logging.INFO)
 
@@ -59,9 +60,10 @@ COMMANDS = {
     'enableBuildOpt': 'enables build option in db',
     'displayBuildOpt': 'Display stored build options',
     'setWorkerOpt': 'setWorkerOpt [uuid] [opt_id] : Set the option type of a worker',
-    'dumpSuccessRepo': 'dumpSuccessRepo [start] [end] : dump all successful repo into a `dump.json`,'
-                       ' time format in "dd/mm/yyyy--hh:mm:s" e.g. dumpSuccessRepo 09/02/2022--00:00:0 12/02/2022--00:00:0',
-    'config': 'Generate config JSON for workers',
+    'export': 'export [start_time] [end_time] : export repos into a json file,'
+                       ' time format in "dd/mm/yyyy--hh:mm:s" e.g. export 09/02/2022--00:00:0 12/02/2022--00:00:0'
+                       'You can also specify what columns you want to export, e.g. export 09/02/2022--00:00:0 12/02/2022--00:00:0 url,language',
+    'dumpconfig': 'Generate config JSON for workers',
     'loadrepo': 'Load repo from json',
     'exit': 'Exit with code 0'
 }
@@ -148,7 +150,6 @@ def paginate_results(content, category):
                 yield [("", 'line {}: {}\n'.format(counter, print_repo(item)))]
             elif cag == "buildopt":
                 yield [("", 'line {}: {}\n'.format(counter, print_build_opt(item)))]
-
     p.add_source(GeneratorSource(send_repos(contents, category)))
     p.run()
 
@@ -171,6 +172,16 @@ def parse_cmd(raw_cmd) -> tuple:
         # string arg
         arguments = raw_cmd.split(' ')[1:]
     return command, arguments
+
+
+def get_public_ip():
+    """ get public ip """
+    try:
+        return requests.get('https://checkip.amazonaws.com').text.strip()
+    except:
+        out, err, exit_code = cmd_with_output(
+            f"dig +short myip.opendns.com @resolver1.opendns.com", platform='linux')
+        return out.decode().strip()
 
 
 class CommandValidator(Validator):
@@ -234,7 +245,7 @@ class CommandExecutor:
             self.__enable_build_opt()
         elif command == 'displayBuildOpt':
             self._display_buildopt()
-        elif command == 'config':
+        elif command == 'dumpconfig':
             self.__generateconfig()
         elif command == 'loadrepo':
             self.__loadrepos()
@@ -245,11 +256,14 @@ class CommandExecutor:
                 print("arguments number wrong see helper!")
             else:
                 self.__set_worker_opt(cargs[0], int(cargs[1]))
-        elif command == 'dumpSuccessRepo':
+        elif command == 'export':
             if len(cargs) != 2:
                 self.__dump_success()
-            else:
+            elif len(cargs) == 2:
                 self.__dump_success(cargs[0], cargs[1])
+            else:
+                self.__dump_success(cargs[0], cargs[1], cargs[2])
+
         else:
             print('not impl')
 
@@ -304,23 +318,19 @@ class CommandExecutor:
         except EOFError:
             return
 
-    def __dump_success(self, start_time="01/01/2020--00:00:0", end_time="01/12/2030--00:00:0"):
+    def __dump_success(self, start_time="01/01/2020--00:00:0", end_time="01/12/2030--00:00:0", cols=""):
         """ dump succesful repo into json """
         time_f = "%d/%m/%Y--%H:%M:%S"
         start_timestamp = int(datetime.datetime.strptime(
             start_time, time_f).timestamp())
         end_timestamp = int(datetime.datetime.strptime(
             end_time, time_f).timestamp())
-        
         repo_request = DumpRequest(
             status=BuildStatus.SUCCESS,
             start_timestamp=start_timestamp,
             end_timestamp=end_timestamp)
         opt_request = getBuildOptRequest(request="get")
-        status_request = DumpRequest(
-            status=BuildStatus.SUCCESS,
-            start_timestamp=start_timestamp,
-            end_timestamp=end_timestamp)
+
         build_opts = [{
             "id": b.id,
             "platform": b.platform,
@@ -332,6 +342,8 @@ class CommandExecutor:
             "build_command": b.build_command,
             "enable": b.enable
         } for b in self.stub.getBuildOpt(opt_request) if b.enable]
+        print(f"{len(build_opts)} build opt found")
+
         repos = [{
             "id": repo_info.id,
             "url": repo_info.url,
@@ -345,25 +357,29 @@ class CommandExecutor:
             "priority": repo_info.priority,
             "build_system": repo_info.build_system,
         } for repo_info in self.stub.dumpSuccessRepo(repo_request)]
-        print(f"{len(build_opts)} build opt found, {len(repos)} repos found")
-        # b_status_list = [{
-        #     "id" : b_status.id,
-        #     "priority" : b_status.priority,
-        #     "clone_status" : b_status.clone_status,
-        #     "clone_msg" : b_status.clone_msg,
-        #     "build_status" : b_status.build_status,
-        #     "build_msg" : b_status.build_msg,
-        #     "build_opt_id" : b_status.build_opt_id,
-        #     "repo_id" : b_status.repo_id,
-        #     "mod_timestamp" : b_status.mod_timestamp,
-        #     "build_time" : b_status.build_time
-        # } for b_status in self.stub.dumpSuccessStatus(status_request)]
+        print(f"{len(repos)} repos found")
+
+        b_statuses = []
+        for b_status in self.stub.dumpSuccessStatus(repo_request):
+            b_statuses.append({
+                "id": b_status.id,
+                "clone_status": b_status.clone_status,
+                "build_status": b_status.build_status,
+                "build_opt_id": b_status.build_opt_id,
+                "repo_id": b_status.repo_id,
+                "mod_timestamp": b_status.mod_timestamp,
+                "build_time": b_status.build_time})
+
+        print(f"{len(b_statuses)} buildtasks found")
+
+        print("Saving")
         with open(f'dump__{start_time}__{end_time}.json'.replace("/", "_"), 'w') as dump_f:
             out_obj = json.dumps(
-                {'opt_list': build_opts, 'repo_list': repos,
-                #  'b_status_list': b_status_list
+                {'buildopt': build_opts,
+                 'b_status': b_statuses,
+                 "projects": repos
                  },
-                indent = 4)
+                indent=4)
             dump_f.write(out_obj)
 
     def __worker_info(self) -> None:
@@ -443,13 +459,16 @@ class CommandExecutor:
         """
         Build repo on command
         """
-        worker = prompt("Choose what config you want to generate: \n1:Crawler\n2:Windows worker\n3:Linux worker on other machine\nInput from [1, 2, 3]: ")
+        worker = prompt(
+            "Choose what config you want to generate: \n1:Crawler\n2:Windows worker\n3:Linux worker on other machine\nInput from [1, 2, 3]: ")
         while worker.lower() not in ["1", "2", "3"]:
-            worker = prompt("Choose what config you want to generate: \n1:Crawler\n2:Windows worker\n3:Linux worker on other machine\nInput from [1, 2, 3]: ")
-        if worker=="1":
+            worker = prompt(
+                "Choose what config you want to generate: \n1:Crawler\n2:Windows worker\n3:Linux worker on other machine\nInput from [1, 2, 3]: ")
+        if worker == "1":
             tokens = []
             while True:
-                token = prompt("Input a token then press Enter to input another one\nPress Enter to finish input\n")
+                token = prompt(
+                    "Input a token then press Enter to input another one\nPress Enter to finish input\n")
                 if token == "":
                     break
                 else:
@@ -460,25 +479,38 @@ class CommandExecutor:
             with open("assemblage/configure/scraper_config.json", "w") as f_new:
                 f_new.write(json.dumps(configs))
             print("Crawler token saved")
-        if worker=="2":
-            with open("assemblage/configure/windows_config._sample.json") as f:
-                configs = json.load(f)
-            server_addr = prompt("Input coordinator's ip address")
-            configs["rabbitmq_host"] = server_addr
-            configs["grpc_addr"] = f"{server_addr}:50052"
-            buildoptions = self._display_buildopt()
-            build_opt_id = prompt("Please choose a build option id to build")
-            configs["default_build_opt"] = build_opt_id
+        if worker == "2":
+            server_addr = prompt(
+                "Do you want to use this machine's public ip? [y/n]: ")
+            if server_addr == "y":
+                server_addr = get_public_ip()
+            else:
+                server_addr = prompt("Input server address: ")
+            buildoptions = self._get_buildopt()
             for buildoption in buildoptions:
-                if buildoption._id == build_opt_id:
-                    configs["compiler"] = buildoption.compiler_name
-                    configs["library"] = buildoption.library
-                    configs["build_mode"] = buildoption.build_command
-                    configs["optimization"] = buildoption.compiler_flag.replace("-", "")
-            with open("assemblage/configure/windows_config.json", "w") as f_new:
-                f_new.write(json.dumps(configs))
-            print("Windows worker config saved")
-        if worker=="3":
+                with open("assemblage/configure/worker_config_sample.json") as f:
+                    configs = json.load(f)
+                configs["rabbitmq_host"] = server_addr
+                configs["grpc_addr"] = f"{server_addr}:50052"
+                configs["default_build_opt"] = buildoption.id
+                configs["compiler"] = buildoption.compiler_name
+                configs["library"] = buildoption.library
+                configs["platform"] = buildoption.platform
+                configs["build_mode"] = buildoption.build_command
+                configs["optimization"] = buildoption.compiler_flag.replace(
+                    "-", "")
+                configs["random_pick"] = 0
+                configs["clone_proxy"] = []
+                configs["clone_proxy_token"] = ""
+                try:
+                    del configs["blacklist"]
+                    del configs["build_opt"]
+                except KeyError:
+                    pass
+                with open(f"assemblage/configure/windows_config{buildoption.id}.json", "w") as f_new:
+                    json.dump(configs, f_new, indent=4)
+                print(f"Windows worker config {buildoption.id} saved")
+        if worker == "3":
             with open("assemblage/configure/worker_config_sample.json") as f:
                 configs = json.load(f)
             server_addr = prompt("Input coordinator's ip address")
@@ -490,7 +522,6 @@ class CommandExecutor:
             with open("assemblage/configure/worker_config.json", "w") as f_new:
                 f_new.write(json.dumps(configs))
             print("Linux worker config saved")
-
 
     def __add_build_opt(self) -> None:
         """
@@ -506,9 +537,7 @@ class CommandExecutor:
         compiler_flag = prompt("Enter compiler flag (-Od, -O1,... ): ")
         build_system = prompt("Enter build system: (sln, make, ...): ")
         build_command = prompt("Enter build command: (Debug, Release)")
-        library = prompt("Enter library (Win32, x64,...): ")
-        while library.lower() not in ["win32", "x64", "Any CPU"]:
-            library = prompt("Enter library (Win32, x64, any cpu...): ")
+        library = prompt("Enter library (x86, x64,...): ")
         proceed = prompt("\nCommit this entry [y/n]: ")
         if proceed.lower() == 'y':
             confirm = prompt("Confirm to proceed [y/n]: ")
@@ -538,6 +567,7 @@ class CommandExecutor:
     def __print_progress_status(self) -> None:
         # pylint: disable=line-too-long
         request = ProgressRequest(request='req')
+        print("Fetching progress status...")
         try:
             response = self.stub.checkProgress(request)
             print(
@@ -570,31 +600,47 @@ class CommandExecutor:
 
     def __loadrepos(self):
         mysql_conn_str = prompt("Input db string:")
+        if not mysql_conn_str:
+            with open("assemblage/configure/coordinator_config.json") as f:
+                mysql_conn_str = json.load(f)['db_path']
         db_man = DBManager(mysql_conn_str)
         repo_json_path = prompt("Please input the JSON file path: ")
         if not os.path.exists(repo_json_path):
+            print("File not found")
             return False
         with open(repo_json_path, "r") as repo_json_f:
             parsed_json = json.loads(repo_json_f.read())
-            repo_list = parsed_json['repo_list']
-            opt_list = parsed_json['opt_list']
-            for opt in opt_list:
-                opt['enable'] = True
-                del opt["id"]
-                db_man.add_build_option(**opt)
-                print("Build opt sent")
-            # check if input file is valid 
-            count = 0
-            for repo in repo_list:
-                if not is_valid_repo_row(repo):
-                    count = count + 1
-            print(f"{len(repo_list)} found, {count} invalid, not sending them")
-            if input("Send? [y/n]").strip().lower() == 'y':
+            print(parsed_json.keys())
+            repo_list = parsed_json['projects']
+            opt_list = parsed_json['buildopt']
+            bstatus_list = parsed_json['b_status']
+            print(f"{len(repo_list)} repos found, {len(bstatus_list)} b_status found")
+            if input("Reconstruct databse will delete ALL data in databse! Are you sure? [y/n]").strip().lower() != 'y':
+                return
+            if input("Wipe the database? [y/n]").strip().lower() != 'y':
+                return
+            if input("Reconstruct database? [y/n]").strip().lower() == 'y':
+                init_clean_database(mysql_conn_str)
+                print("Restore buildopt")
+                for opt in tqdm(opt_list):
+                    opt['enable'] = True
+                    opt["_id"] = opt["id"]
+                    del opt["id"]
+                    db_man.add_build_option_without_repo(opt)
+                print("Restore repos")
                 for repo in tqdm(repo_list):
+                    repo["_id"] = repo["id"]
+                    del repo["id"]
+                    db_man.insert_repos(repo, repoonly=True)
+                print(
+                    "Restore b_status, this will take long time, and it may seem stuck")
+                for bstatus in tqdm(bstatus_list):
                     try:
-                        db_man.insert_repos(repo)
-                    except AttributeError as err:
-                        pass
+                        bstatus["_id"] = bstatus["id"]
+                        del bstatus["id"]
+                        db_man.insert_b_status(bstatus)
+                    except Exception as err:
+                        print(err)
             db_man.shutdown()
 
     def __enable_build_opt(self):
@@ -635,12 +681,10 @@ class CommandExecutor:
 
     def _display_buildopt(self):
         request = getBuildOptRequest(request="get")
-        print("Something happened here")
         try:
             build_options = []
             for build_option in self.stub.getBuildOpt(request):
                 build_options.append(build_option)
-                print("Latest version: buildopt")
             paginate_results(build_options, category="buildopt")
             return build_options
         except grpc.RpcError as rpc_error:
@@ -650,6 +694,16 @@ class CommandExecutor:
             else:
                 logging.info(f"RPC Error: {rpc_error}")
             return
+
+    def _get_buildopt(self):
+        request = getBuildOptRequest(request="get")
+        try:
+            build_options = []
+            for build_option in self.stub.getBuildOpt(request):
+                build_options.append(build_option)
+            return build_options
+        except grpc.RpcError as rpc_error:
+            return []
 
 
 def init_guide():
@@ -674,7 +728,8 @@ def init_guide():
             pass
     out_dec = out.decode()
     print(out_dec)
-    test_gh_flag =  input("Use testing assemblage-gh image?  (this will use some existing testing github login credential) [y/n]?")
+    test_gh_flag = input(
+        "Use testing assemblage-gh image?  (this will use some existing testing github login credential) [y/n]?")
     if test_gh_flag.strip() == "y":
         os.system("docker pull stargazermiao/assemblage-gh")
         os.system("docker tag stargazermiao/assemblage-gh assemblage-gh:base")
@@ -694,7 +749,8 @@ def init_guide():
         os.system("docker run --name=mysql -p 3306:3306 --network=assemblage-net -e MYSQL_ROOT_PASSWORD=assemblage -d mysql/mysql-server")
         print("Booting mysql...")
         sleep(20)
-        os.system("docker exec -i mysql mysql -u root -passemblage < ./assemblage/data/default_user.sql")
+        os.system(
+            "docker exec -i mysql mysql -u root -passemblage < ./assemblage/data/default_user.sql")
         # all default
         db_addr = "mysql"
         db_addr = db_addr + ':3306'
@@ -704,7 +760,8 @@ def init_guide():
         mysql_conn_str = f'mysql+pymysql://{user_name}:{user_pass}@{db_addr}/{db_name}?charset=utf8mb4'
         mysql_conn_str_local = f'mysql+pymysql://{user_name}:{user_pass}@localhost:3306/{db_name}?charset=utf8mb4'
     else:
-        db_addr = prompt('Please input MySQL connection address e.g. 172.18.0.5:3306\n')
+        db_addr = prompt(
+            'Please input MySQL connection address e.g. 172.18.0.5:3306\n')
         db_name = prompt('Please input MySQL database used for Assemblage\n')
         user_name = prompt('Please input MySQL username e.g. assemblage\n')
         user_pass = prompt('Please input MySQL password\n')
@@ -740,7 +797,8 @@ def init_guide():
     # test_worker_flag = input("Boot an testing aws worker? [y/n]")
     # if test_worker_flag.strip().lower() == 'y':
 
-    input_file_flag = input("Initialize database with JSON(check README for data format)? [y/n]")
+    input_file_flag = input(
+        "Initialize database with JSON(check README for data format)? [y/n]")
     if input_file_flag.strip() == 'y':
         db_man = DBManager(mysql_conn_str)
         repo_json_path = input("Please input the JSON file path: ")
@@ -755,7 +813,7 @@ def init_guide():
                 del opt["id"]
                 db_man.add_build_option(**opt)
                 print("Build opt sent")
-            # check if input file is valid 
+            # check if input file is valid
             count = 0
             for repo in repo_list:
                 if not is_valid_repo_row(repo):
@@ -775,6 +833,7 @@ def init_guide():
     os.system("sh start.sh")
     print("Configure finish")
     exit()
+
 
 def is_valid_repo_row(repo: dict):
     """

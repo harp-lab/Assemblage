@@ -10,6 +10,7 @@ from assemblage.protobufs.assemblage_pb2 import BStatus, Repo, Worker, BuildOpt
 
 def pack_repo_msg(repodo):
     """ convert a RepoDO object into grpc message """
+    size = 0 if "size" not in repodo else repodo["size"]
     return Repo(
         id=repodo._id,
         url=repodo.url,
@@ -22,7 +23,8 @@ def pack_repo_msg(repodo):
         updated_at=str(repodo.updated_at),
         forked_commit_id=repodo.forked_commit_id,
         priority=repodo.priority,
-        build_system=repodo.build_system
+        build_system=repodo.build_system,
+        size=size
     )
 
 
@@ -50,7 +52,7 @@ def pack_worker_msg(worker_info):
         platform=worker_info['platform'],
         job_type=worker_info['job_type'],
         opt_id=int(worker_info['opt_id']),
-        uuid = worker_info['uuid']
+        uuid=worker_info['uuid']
     )
 
 
@@ -65,7 +67,7 @@ def unpack_bianry_msg(bin_info):
 def pack_buildOpt_msg(option):
     """ convert BuildOpt object into RPC message """
     return BuildOpt(
-        id=option.id,
+        id=option._id,
         platform=option.platform,
         language=option.language,
         compiler_name=option.compiler_name,
@@ -76,17 +78,25 @@ def pack_buildOpt_msg(option):
         enable=option.enable
     )
 
+
 def pack_bstatus_msg(b_status):
     """ convert Status object to RPC message """
+
+    build_time = int(b_status.build_time) if int(
+        b_status.build_time) > 0 else 0
+    id = int(b_status._id) if int(b_status._id) > 0 else 0
+    mod_timestamp = int(b_status.mod_timestamp) if int(
+        b_status.mod_timestamp) > 0 else 0
+
     return BStatus(
-        id =b_status.id,
-        priority = b_status.priority,
-        clone_status = b_status.clone_status,
-        clone_msg = b_status.clone_msg,
-        build_status = b_status.build_status,
-        build_msg = b_status.build_msg,
-        build_opt_id = b_status.build_opt_id,
-        repo_id = b_status.repo_id,
-        mod_timestamp = b_status.mod_timestamp,
-        build_time = b_status.build_time
+        id=id,
+        priority=int(b_status.priority),
+        clone_status=int(b_status.clone_status),
+        clone_msg=str(b_status.clone_msg),
+        build_status=int(b_status.build_status),
+        build_msg=str(b_status.build_msg),
+        build_opt_id=int(b_status.build_opt_id),
+        repo_id=int(b_status.repo_id),
+        mod_timestamp=mod_timestamp,
+        build_time=build_time
     )

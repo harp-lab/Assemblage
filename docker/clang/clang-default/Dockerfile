@@ -1,5 +1,8 @@
 FROM assemblage-clang:base
 
+# RUN echo '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' >> /gtoken
+# RUN gh auth login --with-token < /gtoken
+
 ENV CC='clang'
 ENV CXX='clang++'
 
