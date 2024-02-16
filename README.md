@@ -27,7 +27,7 @@ https://assemblage-lps.s3.us-west-1.amazonaws.com/public/jan19_licensed.sqlite
 https://assemblage-lps.s3.us-west-1.amazonaws.com/public/licensed_windows.zip  
 
 2.Windows vcpkg dataset (Unprocessed compression files, ~25k):
-*   Dataset:  
+*   Dataset (41G):  
 https://assemblage-lps.s3.us-west-1.amazonaws.com/public/vcpkg_windows.zip
 
 
