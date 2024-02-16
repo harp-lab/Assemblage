@@ -17,7 +17,8 @@ Due to the commercial license of the Wiundows, we only provide the boot script a
 
 ## Dataset Availability
 
-We are publishing the binaries __only comes with license__.  
+We include __only__ the subset of binaries for which permissive licenses can be ascertained. 
+
 Pdb files are too large to be included, but datasets with pdb files are also available upon request.
 
 1.Windows GitHub dataset (Processed to SQLite databse, 97k):  
