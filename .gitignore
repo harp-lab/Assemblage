@@ -46,8 +46,14 @@ Builds/*
 Binaries/*
 *.out
 *.txt
+
 db-data/
+
+binary_msg
+
 dump_*
 *.txt
 *.out
 local_config/
+reproduce
+*.ipynb
