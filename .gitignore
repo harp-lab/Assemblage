@@ -46,7 +46,11 @@ Builds/*
 Binaries/*
 *.out
 *.txt
+
 db-data/
+
+binary_msg
+
 dump_*
 *.txt
 *.out
