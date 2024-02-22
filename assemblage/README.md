@@ -1,10 +1,50 @@
 # Assemblage
 
-## Deployment of popular cloud infrastructure
+## AWS Deployment Instructions 
 
 Assemblage is mainly tested on AWS. If you plan to use AWS services, please copy your confidential file to `$ASSEMBLAGE_HOME/aws` before system initialization, which should contains the private key and geo information
 
-## Set up env for developing & testing
+### Builder/Crawler APIs
+
+#### Crawler Data Source
+
+A crawler is provided with the system, it need a object of data source, which is the website it crawls,the constructor for such data source is provided as `GithubRepositories`, which takes in tokens, query parameters and query time intervals, for example:
+
+```
+GithubRepositories(
+    git_token="",
+    qualifier={
+        "language:c",
+        "stars:>2"
+    }, 
+    crawl_time_start= start,
+    crawl_time_interval=querylap,
+    crawl_time_lap=querylap,
+    proxies=[],
+    build_sys_callback=get_build_system
+    # sort="stars", order="desc"
+)
+
+```
+
+It is also possible to implement crawler to other websites by extending the `DataSource` class
+
+#### Worker APIs: 
+
+Worker API extends `BuildStartegy` class, and provides a comprehensive coverage of behavior of 3 stages: cloning, building, build_callback.
+
+* Clone: `get_clone_dir` specify the clone data's destination path, `clone_data` should clone the source code to the provided destination path.
+* Compile/Build: `run_build` specifies the behavior during building, such as how to call cmd/modify the files.
+* Binary Collection: `post_build_hook` is used to deal with files after the build process exited.
+
+#### Example Workers
+
+an example of worker can be found at [example_cluster.py](../example_cluster.py), [example_windows.py](../example_windows.py), [example_vcpkg.py](../example_vcpkg.py).
+
+If you don't need customization, check [stable branches](https://github.com/harp-lab/Assemblage/branches) that has been deployed and tested.
+
+
+### Deployment
 
 
 1. Create the docker network
@@ -40,15 +80,16 @@ mysql> CREATE DATABASE IF NOT EXISTS assemblage;
 
 3. Initialize the Database
 ```
-# Run cli.py and wipe the database, it will clean the database and create tables
+# Run cli.py and follow the intructions, it will create tables and setup other configs
 pip3 install -r requirements.txt
 python3 cli.py
 ```
 
 
-4. Run `docker-compose` to start up the services (Optional, cli.py can boot after initialization)
+4. Use `start.sh` or `stop.sh` to start up the services if needed
 ```
-docker-compose up -d
+sh start.sh
+sh stop.sh
 ```
 
 5. Boot CLI

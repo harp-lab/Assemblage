@@ -2,7 +2,7 @@
 
 Assemblage is a distributed binary corpus discovery, generation, and archival tool built to provide high-quality labeled metadata for the purposes of building training data for machine learning applications of binary analysis and other applications (static / dynamic analysis, reverse engineering, etc...).
 
-The code published in this repository is published under MIT license.
+The code in this repository is published under MIT license.
 
 ## Cloud infrastructure support
 
@@ -14,6 +14,8 @@ This is the public repository of Assemblage, and it is hosts a general template 
 
 We provide Dockerfile and build script to build Docker images for Linux worker, and the Docker compose file can be used to specify the resource each worker can access.  
 Due to the commercial license of the Wiundows, we only provide the boot script and environment specification for workers, locating at the [Windows readme](assemblage/windows/README.md)
+
+Meanwhile, a brief introduction to the APIs is provided at this [link](assemblage/README.md).
 
 ## Dataset Availability
 
