@@ -23,18 +23,21 @@ We include __only__ the subset of binaries for which permissive licenses can be 
 
 Pdb files are too large to be included, but datasets with pdb files are also available upon request.
 
-1.Windows GitHub dataset (Processed to SQLite databse, 97k):  
+1.Windows GitHub dataset (Processed to SQLite database, 97k):  
 *   SQLite databse (14G):  
 https://assemblage-lps.s3.us-west-1.amazonaws.com/public/jan19_licensed.sqlite  
 *   Binary dataset (8G):  
 https://assemblage-lps.s3.us-west-1.amazonaws.com/public/licensed_windows.zip  
 
-2.Windows vcpkg dataset (Unprocessed compression files, ~25k):
-*   Dataset (41G):  
-https://assemblage-lps.s3.us-west-1.amazonaws.com/public/vcpkg_windows.zip
+2.Windows vcpkg dataset (Processed to SQLite database, 29k):
 
+*   SQLite database (3.3GB):  
+https://assemblage-lps.s3.us-west-1.amazonaws.com/public/vcpkg.sqlite.zip
 
-3.Linux GitHub dataset (Processed to SQLite databse, 211k):
+*   Binary dataset (18G):  
+https://assemblage-lps.s3.us-west-1.amazonaws.com/public/vcpkg.zip
+
+3.Linux GitHub dataset (Processed to SQLite database, 211k):
 
 *   SQLite database (23M):  
 https://assemblage-lps.s3.us-west-1.amazonaws.com/public/feb15_linux_licensed.sqlite
