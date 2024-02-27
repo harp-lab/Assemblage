@@ -13,7 +13,7 @@ import os
 import time
 
 from assemblage.api import *
-
+from assemblage.build_method import cmd_with_output
 
 time_now = int(time.time())
 start = time_now - time_now % 86400
@@ -47,7 +47,6 @@ github_c_repos = GithubRepositories(
     }, 
     crawl_time_start= start,
     crawl_time_interval=querylap,
-    crawl_time_lap=querylap,
     proxies=[],
     build_sys_callback=get_build_system
     # sort="stars", order="desc"
@@ -62,7 +61,6 @@ github_rust_repo = GithubRepositories(
     }, 
     crawl_time_start= start,
     crawl_time_interval=querylap,
-    crawl_time_lap=querylap,
     build_sys_callback=get_build_system,
     proxies=[],
 )
@@ -92,14 +90,14 @@ class GllvmBuild(BuildStartegy):
         elif 'make' in build_tool:
             cmd = f'cd {target_dir} && CC=gclang timeout -s SIGKILL 1d make -j16'
         logging.info("Linux cmd generated: %s", cmd)
-        return cmd_with_output(cmd, 600, platform)
+        return BuildStartegy.cmd_with_output(cmd, 600, platform)
 
 class RustBuild(BuildStartegy):
     def run_build(self, repo, target_dir, build_mode, library, optimization,
                      slnfile, platform, compiler_version):
         """ just cargo build """
         cmd = f"cd {target_dir} && RUSTFLAGS=-g cargo build --release"
-        return cmd_with_output(cmd, 600, platform)
+        return BuildStartegy.cmd_with_output(cmd, 600, platform)
     
     def is_valid_binary(self, binary_path):
         if 'build_script_build' in binary_path or 'build-script-build' in binary_path \

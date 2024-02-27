@@ -8,6 +8,7 @@ import logging
 import requests
 import os
 import shutil
+import json
 from assemblage.api import *
 
 aws_profile = AWSProfile("assemblage-vcpkg", "assemblage")
@@ -39,7 +40,7 @@ class VcpkgIORepos(DataSource):
                 'url': repo['Name'],
                 'language': "c/c++",
                 'owner_id': 0,
-                'description': "ww",
+                'description': "vcpkg_default_desc",
                 'created_at': "2023-3-6 12:12:12",
                 'updated_at': "2023-3-6 12:12:12",
                 'size': 1000,
