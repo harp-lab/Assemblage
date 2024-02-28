@@ -88,8 +88,7 @@ The exposed worker APIs locate in [api.py](api.py)
 
 ```
 from assemblage.worker.profile import AWSProfile
-from assemblage.worker.postprocess import PostAnalysis
-from assemblage.worker.build_method import *
+from assemblage.worker.build_method import BuildStartegy, DefaultBuildStrategy
 ```
 
 where the `BuildStartegy` specifies the behavior of Building process, and each abstract method represents each building stages. If you want to fully customize the building/post building behavior, provide the `clone_data`, `pre_build`, `run_build` and `post_build_hook` function with your code, the function input indicates the build configuration (you can ignore these if you pass in your own build configs)
@@ -115,7 +114,6 @@ where the `BuildStartegy` specifies the behavior of Building process, and each a
                     dest_binfolder, build_mode, library, repoinfo, toolset,
                     optimization, commit_hexsha):
         No return value, this function processes the dest_binfolder and upload it
-
 
 
 ## Example Workers
