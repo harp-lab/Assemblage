@@ -118,6 +118,6 @@ where the `BuildStartegy` specifies the behavior of Building process, and each a
 
 ## Example Workers
 
-Example workers can be found at [example_cluster.py](../example_cluster.py), [example_windows.py](../example_windows.py), [example_vcpkg.py](../example_vcpkg.py).
+Example workers can be found at [example_cluster.py](../example_workers/example_cluster.py), [example_windows.py](../example_workers/example_windows.py), [example_vcpkg.py](../example_workers/example_vcpkg.py).
 If you don't need customization, check [stable branches](https://github.com/harp-lab/Assemblage/branches) that has been deployed and tested on AWS for months.
 
