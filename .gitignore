@@ -51,3 +51,5 @@ dump_*
 *.txt
 *.out
 local_config/
+
+Binaries*
