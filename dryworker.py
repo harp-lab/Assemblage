@@ -61,3 +61,4 @@ for project in projects:
             version_byvcpkg = repodata['version-string']
 
         taskwrap(project, optimization_level, version_byvcpkg)
+    break

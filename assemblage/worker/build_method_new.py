@@ -105,15 +105,10 @@ def dia_get_func_funcinfo(binfile, source_code_prefix=""):
     # binfile = binfile.replace("/", "\\")
     binfolder = os.path.dirname(binfile)
     binfile = binfile.split("\\")[-1]
-    print("BINFILE", binfile, binfolder)
-    # cmd_args = [
-    #     "powershell", "-Command", "Dia2Dump", "-lines", "*", f"'{binfile}'"
-    # ]
+    print("Processing", binfile, binfolder)
     cmd = f"Dia2Dump -lines * {binfile}"
     out, _err, _exit_code = cmd_with_output(cmd, cwd=binfolder)
     file_cache = {}
-    # out, _err, _exit_code = cmd_with_output(cmd_args, platform='windows')
-    # print(cmd, out, _err)
     try:
         lines_notclean = out.decode().split("\r\n")
     except:

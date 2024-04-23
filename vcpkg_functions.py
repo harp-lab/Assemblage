@@ -62,6 +62,9 @@ def run_build(repo, target_dir, build_mode, library, optimization,
 		bindir, build_mode, library=library, repoinfo={"url":repo, "updated_at": version}, toolset="v142",
 				optimization=optimization, source_codedir=target_dir, commit=version, movedir=f"Binaries/{repo}-{triplet_cpu_arch}-{optimization}-{version.replace(':','')}({compiler_version})")
 	shutil.rmtree(r"Builds")
+	shutil.rmtree(r"C:\Users\yukim\OneDrive\Documents\vcpkg\buildtrees")
+	shutil.rmtree(r"C:\Users\yukim\OneDrive\Documents\vcpkg\packages")
+	shutil.rmtree(r"C:\Users\yukim\OneDrive\Documents\vcpkg\downloads")
 
 	return
 
