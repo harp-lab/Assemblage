@@ -105,7 +105,7 @@ def dia_get_func_funcinfo(binfile):
             length = int(
                 re.findall(r"len \= \w+", line)[0].replace("len = ", ""), 16)
             line_number = int(
-                re.findall(r"line \d+", line)[0].replace("line ", ""), 16)
+                re.findall(r"line \d+", line)[0].replace("line ", ""))
             lines_dict["line_number"] = line_number
             lines_dict["rva"] = rva
             lines_dict["length"] = length
@@ -121,7 +121,7 @@ def dia_get_func_funcinfo(binfile):
                 except Exception as excep:
                     file_cache[source_file_cleaned] = []
             try:
-                lines_dict["source_code"] = file_cache[source_file_cleaned][line_number].strip(
+                lines_dict["source_code"] = file_cache[source_file_cleaned][line_number-1].strip(
                 )
             except Exception as err:
                 lines_dict["source_code"] = ""
